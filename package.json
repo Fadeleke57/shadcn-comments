@@ -2,7 +2,7 @@
   "name": "shadcn-comments",
   "description": "Shadcn React component library for a functioning comments section",
   "private": false,
-  "version": "1.0.0",
+  "version": "1.0.5",
   "type": "module",
   "main": "dist/index.cjs.js",
   "module": "dist/index.es.js",
@@ -13,7 +13,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/dieptv1999/shadcn-comments"
+    "url": "https://github.com/tecklens/shadcn-comments"
   },
   "scripts": {
     "dev": "vite",
@@ -30,11 +30,12 @@
     "@mdx-js/react": "^3.0.1",
     "@mdxeditor/editor": "^3.11.3",
     "@radix-ui/react-avatar": "^1.0.3",
+    "@radix-ui/react-popover": "^1.1.2",
     "@radix-ui/react-slot": "^1.0.2",
     "class-variance-authority": "^0.6.0",
     "clsx": "^1.2.1",
     "date-fns": "^3.6.0",
-    "lucide-react": "^0.221.0",
+    "lucide-react": "^0.453.0",
     "tailwind-merge": "^1.12.0",
     "tailwindcss-animate": "^1.0.5"
   },
@@ -48,12 +49,12 @@
     "eslint": "^8.38.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.3.4",
-    "postcss": "^8.4.23",
+    "postcss": "^8.4.47",
     "postcss-cli": "^10.1.0",
     "prop-types": "^15.8.1",
     "tailwindcss": "^3.3.2",
     "typescript": "^5.0.2",
-    "vite": "^4.3.2",
+    "vite": "^5.4.6",
     "vite-plugin-dts": "^2.3.0"
   }
 }

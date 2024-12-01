@@ -1,14 +1,18 @@
 import React, {useState} from "react";
 import {Avatar, AvatarFallback, AvatarImage} from "./Avatar";
-import {CircleIcon} from "lucide-react";
+import {ArrowUpIcon, CircleIcon, SmileIcon} from "lucide-react";
 import {EditorComment} from "./EditorComment";
-import {Comment} from "../types/comment";
+import {ACTIONS, ACTIONS_TYPE, Comment} from "../types/comment";
 import {User} from "../types/user";
 import {EditorCommentStyle2} from "./EditorCommentStyle2";
 import {makeid} from "../lib/utils";
 import {MDXProvider} from "@mdx-js/react";
 import PreviewComment from "./PreviewComment";
 import {formatDistance} from 'date-fns';
+import {Popover, PopoverContent, PopoverTrigger} from "./Popover";
+import EmojiSelect from "./EmojiSelect";
+import {DropdownMenu} from "./DropdownMenu";
+import {EditingEditorComment} from "./EditingEditorComment";
 
 interface CommentProps {
   className?: string;
@@ -17,19 +21,44 @@ interface CommentProps {
   value: Comment[];
   currentUser: User,
   onChange?: (value: Comment[]) => void,
-  theme: 'light' | 'dark' | 'system'
+  theme: 'light' | 'dark' | 'system',
+  allowUpVote?: boolean;
+  onVoteChange?: (checked: boolean) => void
+}
+
+interface CommentCardProps {
+  comment: Comment,
+  onReply: (val: string) => void,
+  currentUser: User,
+  allowUpVote?: boolean;
+  onChange: (change: any) => void;
+  onDelete: () => void;
+  onVoteChange: (change: boolean) => void;
+  theme: 'light' | 'dark' | 'system',
 }
 
 export const CommentCard = ({
                               comment,
                               onReply = () => {
                               },
-                              currentUser
-                            }: { comment: Comment, onReply: (val: string) => void, currentUser: User }) => {
+                              currentUser,
+                              allowUpVote,
+                              onChange,
+                              onVoteChange,
+                              theme,
+                              onDelete,
+                            }: CommentCardProps) => {
   const [replying, setReplying] = useState(false)
+  const [editing, setEditing] = useState(false)
+
+  const actions = ACTIONS.filter(e => comment.actions && comment.actions[e.id] && comment.selectedActions?.includes(e.id))
+
+  const upvote = (comment.actions ?? {})[ACTIONS_TYPE.UPVOTE];
+
+  const upvoted = comment.selectedActions?.includes(ACTIONS_TYPE.UPVOTE);
 
   return (
-    <div className={'flex flex-col gap-1'}>
+    <div className={'flex flex-col gap-1'} id={`comment-${comment.id}`}>
       <div className={'flex gap-4'}>
         <Avatar className={'w-[32px] h-[32px]'}>
           <AvatarImage src={comment.user?.avatarUrl}/>
@@ -37,12 +66,109 @@ export const CommentCard = ({
         </Avatar>
         <div className={`flex flex-col w-full`}>
           <div className={'min-h-[30px] rounded-lg s-comment-card border'}>
-            <div className={'h-[37px] w-full user rounded-t-lg flex items-center justify-start px-3 border-b'}>
-              <span className={'font-semibold'}>{comment.user?.fullName}</span>
+            <div
+              className={'h-[37px] w-full user rounded-t-lg flex items-center justify-between border-b'}>
+              <div className={'flex items-center px-3'}>
+                <span className={'font-semibold'}>{comment.user?.fullName}</span>
+              </div>
+              <DropdownMenu
+                comment={comment}
+                currentUser={currentUser}
+                openEditor={() => {
+                  setEditing(true)
+                }}
+                deleteComment={onDelete}
+              />
             </div>
             <div className={'p-3'}>
-              <PreviewComment source={comment.text}/>
+              {editing ?
+                <EditingEditorComment
+                  currentUser={currentUser}
+                  theme={theme}
+                  value={comment.text}
+                  onChange={(val) => {
+                    onChange({
+                      text: val
+                    })
+                    setEditing(false)
+                  }}/>
+                : <PreviewComment source={comment.text}/>}
             </div>
+            {(allowUpVote && !editing) &&
+              <div className={'flex flex-wrap items-center gap-2 md:gap-3 text-sm px-3 pb-2'}>
+                <div
+                  onClick={() => {
+                    onVoteChange(!upvoted)
+                    const currentAmount = (comment.actions || {})[ACTIONS_TYPE.UPVOTE];
+                    if (upvoted) {
+                      if (currentAmount)
+                        onChange({
+                          selectedActions: comment.selectedActions?.filter(e => e !== ACTIONS_TYPE.UPVOTE),
+                          actions: {
+                            ...(comment.actions || {}),
+                            [ACTIONS_TYPE.UPVOTE]: currentAmount - 1,
+                          }
+                        })
+                    } else {
+                      onChange({
+                        selectedActions: [...(comment.selectedActions ?? []), ACTIONS_TYPE.UPVOTE],
+                        actions: {
+                          ...(comment.actions || {}),
+                          [ACTIONS_TYPE.UPVOTE]: currentAmount ? currentAmount + 1 : 1,
+                        }
+                      })
+                    }
+                  }}
+                  className={`border ${upvoted ? `border-[#4493f8] text-[#4493f8]` : ''} rounded-xl px-2 py-0.5 inline-flex gap-1 items-center cursor-pointer`}>
+                  <ArrowUpIcon size={16}/>
+                  <span>{upvote ?? 0}</span>
+                </div>
+                <div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <div className={'p-0.5 rounded-full border cursor-pointer'}>
+                        <SmileIcon size={16}/>
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent className={'p-0.5'} align={'start'}>
+                      <EmojiSelect
+                        value={comment.selectedActions}
+                        onSelect={(v, changeValue: ACTIONS_TYPE) => {
+                          const currentAmount = (comment.actions || {})[changeValue];
+                          onChange({
+                            selectedActions: v,
+                            actions: {
+                              ...(comment.actions || {}),
+                              [changeValue]: currentAmount ? currentAmount + 1 : 1,
+                            }
+                          })
+                        }}
+                        onUnSelect={(v, changeValue: ACTIONS_TYPE) => {
+                          const currentAmount = (comment.actions || {})[changeValue];
+                          if (currentAmount && currentAmount > 0)
+                            onChange({
+                              selectedActions: v.filter(f => f !== changeValue),
+                              actions: {
+                                ...(comment.actions || {}),
+                                [changeValue]: currentAmount - 1,
+                              }
+                            })
+                        }}
+                        className={''}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                {actions?.map(e => (
+                  <div
+                    key={e.id}
+                    className={`border ${upvoted ? `border-[#4493f8] text-[#4493f8]` : ''} rounded-xl px-2 py-0.5 inline-flex gap-1 items-center cursor-pointer`}
+                  >
+                    <span>{e.emoji}</span>
+                    <span>{(comment.actions ?? {})[e.id]}</span>
+                  </div>
+                ))}
+              </div>}
           </div>
           <div className={'flex gap-2 items-center text-sm font-semibold light:text-gray-600 ml-1'}>
             <span className={'cursor-pointer text-primary'} onClick={() => setReplying(true)}>Reply</span>
@@ -83,15 +209,18 @@ export const CommentCard = ({
 }
 
 export const CommentSection = ({
-                                   className = '',
-                                   formatDate,
-                                   isMdxEditor,
-                                   value,
-                                   onChange = () => {
-                                   },
-                                   theme = 'light',
-                                   currentUser,
-                                 }: CommentProps) => {
+                                 className = '',
+                                 formatDate,
+                                 isMdxEditor,
+                                 value,
+                                 onChange = () => {
+                                 },
+                                 theme = 'light',
+                                 currentUser,
+                                 allowUpVote = false,
+                                 onVoteChange = (change: boolean) => {
+                                 }
+                               }: CommentProps) => {
   return (
     <MDXProvider
       components={{
@@ -105,7 +234,6 @@ export const CommentSection = ({
           currentUser={currentUser}
           theme={theme}
           onChange={(val) => {
-            console.log(val)
             onChange([{
               id: makeid(8),
               user: currentUser,
@@ -132,8 +260,21 @@ export const CommentSection = ({
                 } : f))
               }
             }}
+            onChange={(change: any) => {
+              if (value)
+                onChange(value.map(f => f.id === e.id ? {
+                  ...f,
+                  ...change,
+                } : f))
+            }}
+            onDelete={() => {
+              onChange(value.filter(f => f.id !== e.id))
+            }}
             comment={e}
             key={e.id}
+            allowUpVote={allowUpVote}
+            theme={theme}
+            onVoteChange={onVoteChange}
           />
         ))}
       </div>
